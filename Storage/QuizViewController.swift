@@ -79,7 +79,7 @@ class QuizViewController: UIViewController {
         
         print("🎲 Selected \(currentQuestions.count) random questions for this quiz")
         for (index, question) in currentQuestions.enumerated() {
-            print("  \(index + 1). \(question.questionText)")
+            print("  \(index + 1). \(question.questionText) (Correct: \(question.correctAnswer))")
         }
         
         currentQuestionIndex = 0
@@ -88,6 +88,7 @@ class QuizViewController: UIViewController {
     }
     
     private func showQuestion() {
+        // Check if we've finished all questions
         guard currentQuestionIndex < currentQuestions.count else {
             showResult()
             return
@@ -107,7 +108,8 @@ class QuizViewController: UIViewController {
     }
     
     @IBAction func answerButtonTapped(_ sender: UIButton) {
-        guard let question = currentQuestions[safe: currentQuestionIndex] else { return }
+        guard currentQuestionIndex < currentQuestions.count,
+              let question = currentQuestions[safe: currentQuestionIndex] else { return }
         
         // Disable buttons to prevent multiple answers
         [answerButtonA, answerButtonB, answerButtonC, answerButtonD].forEach { $0?.isEnabled = false }
@@ -130,10 +132,19 @@ class QuizViewController: UIViewController {
         }
         
         // Move to next question after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self = self else { return }
+            
+            // Increment index and show next question
             self.currentQuestionIndex += 1
-            self.resetButtonColors()
-            self.showQuestion()
+            
+            // Check if we've finished all questions
+            if self.currentQuestionIndex >= self.currentQuestions.count {
+                self.showResult()
+            } else {
+                self.resetButtonColors()
+                self.showQuestion()
+            }
         }
     }
     
@@ -160,11 +171,13 @@ class QuizViewController: UIViewController {
             preferredStyle: .alert
         )
         
-        alert.addAction(UIAlertAction(title: "New Quiz", style: .default) { _ in
-            self.restartQuiz()  // Get new random questions
+        alert.addAction(UIAlertAction(title: "New Quiz", style: .default) { [weak self] _ in
+            self?.restartQuiz()  // Start new quiz with random questions
         })
         
-        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel) { [weak self] _ in
+            self?.resetToStart()  // Reset to first question but stay in same quiz
+        })
         
         present(alert, animated: true)
     }
@@ -173,6 +186,14 @@ class QuizViewController: UIViewController {
     private func restartQuiz() {
         selectRandomQuestions()  // Select 5 new random questions
         resetButtonColors()
+    }
+    
+    // Reset to first question of current quiz
+    private func resetToStart() {
+        currentQuestionIndex = 0
+        score = 0
+        resetButtonColors()
+        showQuestion()
     }
 }
 
