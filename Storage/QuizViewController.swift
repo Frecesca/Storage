@@ -10,7 +10,8 @@ class QuizViewController: UIViewController {
     @IBOutlet weak var statusLabel: UILabel!
     
     private var quizData: QuizData?
-    private var currentQuestions: [Question] = []
+    private var allQuestions: [Question] = []      // All questions from storage
+    private var currentQuestions: [Question] = []  // Randomly selected 5 questions for current quiz
     private var currentQuestionIndex = 0
     private var score = 0
     
@@ -51,19 +52,38 @@ class QuizViewController: UIViewController {
         if LocalStorageManager.shared.hasLocalData() {
             quizData = LocalStorageManager.shared.loadQuizData()
             if let quizData = quizData {
-                print("Loaded data from local storage")
-                // For simplicity, just use all questions
-                currentQuestions = quizData.questions
-                showQuestion()
+                print("✅ Loaded all \(quizData.questions.count) questions from local storage")
+                allQuestions = quizData.questions
+                selectRandomQuestions()
                 return
             }
         }
         
         // If no local data, create sample data and save it
-        print("No local data found, creating sample data")
+        print("⚠️ No local data found, creating sample data")
         quizData = SampleData.createSampleData()
         _ = LocalStorageManager.shared.saveQuizData(quizData!)
-        currentQuestions = quizData!.questions
+        allQuestions = quizData!.questions
+        selectRandomQuestions()
+    }
+    
+    // Randomly select 5 questions
+    private func selectRandomQuestions() {
+        // If total questions are less than or equal to 5, use all
+        if allQuestions.count <= 5 {
+            currentQuestions = allQuestions
+        } else {
+            // Randomly select 5 different questions
+            currentQuestions = Array(allQuestions.shuffled().prefix(5))
+        }
+        
+        print("🎲 Selected \(currentQuestions.count) random questions for this quiz")
+        for (index, question) in currentQuestions.enumerated() {
+            print("  \(index + 1). \(question.questionText)")
+        }
+        
+        currentQuestionIndex = 0
+        score = 0
         showQuestion()
     }
     
@@ -92,7 +112,7 @@ class QuizViewController: UIViewController {
         // Disable buttons to prevent multiple answers
         [answerButtonA, answerButtonB, answerButtonC, answerButtonD].forEach { $0?.isEnabled = false }
         
-        // Get answer based on button title
+        // Get answer based on button
         var selectedAnswer = ""
         if sender == answerButtonA { selectedAnswer = "A" }
         else if sender == answerButtonB { selectedAnswer = "B" }
@@ -140,8 +160,8 @@ class QuizViewController: UIViewController {
             preferredStyle: .alert
         )
         
-        alert.addAction(UIAlertAction(title: "Restart", style: .default) { _ in
-            self.restartQuiz()
+        alert.addAction(UIAlertAction(title: "New Quiz", style: .default) { _ in
+            self.restartQuiz()  // Get new random questions
         })
         
         alert.addAction(UIAlertAction(title: "OK", style: .cancel))
@@ -149,11 +169,10 @@ class QuizViewController: UIViewController {
         present(alert, animated: true)
     }
     
+    // Restart with new random questions
     private func restartQuiz() {
-        currentQuestionIndex = 0
-        score = 0
+        selectRandomQuestions()  // Select 5 new random questions
         resetButtonColors()
-        showQuestion()
     }
 }
 
